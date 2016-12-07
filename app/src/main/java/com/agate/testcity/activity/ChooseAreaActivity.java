@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.view.View;
@@ -111,6 +112,11 @@ public class ChooseAreaActivity extends Activity {
                 }
 
                 @Override
+                public void onFinish(Bitmap bitmap) {
+
+                }
+
+                @Override
                 public void onError(Exception e) {
                     runOnUiThread(new Runnable() {
                         @Override
@@ -172,6 +178,11 @@ public class ChooseAreaActivity extends Activity {
                             }
                         });
                     }
+                }
+
+                @Override
+                public void onFinish(Bitmap bitmap) {
+
                 }
 
                 @Override

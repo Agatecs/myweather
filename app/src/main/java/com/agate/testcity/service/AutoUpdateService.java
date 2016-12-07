@@ -5,6 +5,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.os.IBinder;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
@@ -50,13 +51,14 @@ public class AutoUpdateService extends Service {
         Httputil.sendHttpRequest2(address, new HttpCallbackListener() {
             @Override
             public void onFinish(String response) {
-                Utility.handleWeatherResponse(AutoUpdateService.this,response);
-            }
+                Utility.handleWeatherResponse(AutoUpdateService.this,response); } @Override public void onFinish(Bitmap bitmap) { }
 
             @Override
             public void onError(Exception e) {
                 e.printStackTrace();
             }
         });
+
     }
+
 }

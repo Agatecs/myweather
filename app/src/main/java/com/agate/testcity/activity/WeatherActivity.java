@@ -3,17 +3,22 @@ package com.agate.testcity.activity;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.support.v4.view.accessibility.AccessibilityManagerCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.agate.testcity.R;
 import com.agate.testcity.service.AutoUpdateService;
@@ -35,11 +40,13 @@ public class WeatherActivity extends Activity implements View.OnClickListener,Sw
     private TextView publishText;
     private TextView weatherDespText;
     private TextView temp1Text;
+    private TextView pm2d5Text;
+    private TextView qltyText;
     private TextView currentDateText;
     private Button switchCity;
     private Button refreshWeather;
     private SwipeRefreshLayout mSwipRefreshLayout;
-
+    private ImageView weatherIcon;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -53,7 +60,10 @@ public class WeatherActivity extends Activity implements View.OnClickListener,Sw
         currentDateText = (TextView)findViewById(R.id.current_date);
         switchCity = (Button)findViewById(R.id.switch_city);
         refreshWeather = (Button) findViewById(R.id.refresh_weather);
+        pm2d5Text = (TextView)findViewById(R.id.pm2d5);
+        qltyText = (TextView)findViewById(R.id.qlty);
         mSwipRefreshLayout = (SwipeRefreshLayout)findViewById(R.id.swipe_refresh);
+        weatherIcon = (ImageView)findViewById(R.id.weathericon);
         mSwipRefreshLayout.setOnRefreshListener(this);
         String cityName = getIntent().getStringExtra("city_name");
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
@@ -95,7 +105,7 @@ public class WeatherActivity extends Activity implements View.OnClickListener,Sw
     }
 
     private void queryWeatherCode(String cityName){
-        String address = "https://free-api.heweather.com/v5/now?city="+cityName+"&key=f49445346ba7479b84820d32806f7998";
+        String address = "https://free-api.heweather.com/v5/weather?city="+cityName+"&key=f49445346ba7479b84820d32806f7998";
         queryWeatherFromServer(address);
     }
 
@@ -104,7 +114,7 @@ public class WeatherActivity extends Activity implements View.OnClickListener,Sw
             @Override
             public void onFinish(String response) {
                 if(!TextUtils.isEmpty(response)){
-                    Utility.handleWeatherResponse(WeatherActivity.this,response);
+                    Utility.handleAllWeatherResponse(WeatherActivity.this,response);
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -112,6 +122,11 @@ public class WeatherActivity extends Activity implements View.OnClickListener,Sw
                         }
                     });
                 }
+            }
+
+            @Override
+            public void onFinish(Bitmap bitmap) {
+
             }
 
             @Override
@@ -130,9 +145,52 @@ public class WeatherActivity extends Activity implements View.OnClickListener,Sw
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         cityNameText.setText(prefs.getString("city_name",""));
         temp1Text.setText(prefs.getString("temp1","")+"℃");
-        weatherDespText.setText(prefs.getString("weather_desp",""));
+        weatherDespText.setText(prefs.getString("weather_desp","")+" 丨");
         publishText.setText(prefs.getString("publish_time","")+" 发布");
         currentDateText.setText(prefs.getString("current_date",""));
+        pm2d5Text.setText("PM2.5: "+prefs.getString("pm2d5",""));
+
+        if(prefs.getString("qlty","").equals("中度污染".toString())){
+            qltyText.setTextColor(Color.YELLOW);
+            qltyText.setText("空气质量: "+prefs.getString("qlty",""));
+        }else if(prefs.getString("qlty","").equals("重度污染".toString())){
+
+            qltyText.setTextColor(Color.RED);
+            qltyText.setText("空气质量: "+prefs.getString("qlty",""));
+
+        }else {
+            qltyText.setTextColor(Color.WHITE);
+            qltyText.setText("空气质量: "+prefs.getString("qlty",""));
+        }
+        String weatherCode = prefs.getString("weather_code","");
+        Httputil.getHttpBitmap(weatherCode, new HttpCallbackListener() {
+            @Override
+            public void onFinish(String response) {
+                //不用实现
+            }
+
+            @Override
+            public void onFinish(final Bitmap bitmap) {
+                if (bitmap != null){
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            weatherIcon.setImageBitmap(bitmap);
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void onError(Exception e) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(WeatherActivity.this,"图片加载失败！", Toast.LENGTH_SHORT);
+                    }
+                });
+            }
+        });
         weatherInfoLayout.setVisibility(View.VISIBLE);
         cityNameText.setVisibility(View.VISIBLE);
         Intent intent = new Intent(this, AutoUpdateService.class);
@@ -141,13 +199,22 @@ public class WeatherActivity extends Activity implements View.OnClickListener,Sw
 
     @Override
     public void onRefresh() {
+        publishText.setText("同步中...");
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
-                SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this);
-                String cityName = prefs.getString("city_name","");
+                String cityName;
+                if(getIntent().getStringExtra("city_name") !=   null)
+                {
+                    cityName = getIntent().getStringExtra("city_name");
+                }else {
+                    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this);
+                    cityName = prefs.getString("city_name", "");
+                }
                 if(!TextUtils.isEmpty(cityName)){
+
                     queryWeatherCode(cityName);
+
                     mSwipRefreshLayout.setRefreshing(false);
 
                 }
